@@ -36,6 +36,8 @@ export function TripPage() {
   const [dialogState, setDialogState] = useState<DialogState | null>(null)
   const [promoteState, setPromoteState] = useState<PromoteState | null>(null)
   const [promoting, setPromoting] = useState(false)
+  const [hasOverflow, setHasOverflow] = useState(false)
+  const scrollRef = useRef<HTMLDivElement>(null)
 
   const activeTabRef = useRef(activeTab)
   const memberIdRef = useRef(member?.id)
@@ -130,6 +132,22 @@ export function TripPage() {
     }
   }, [])
 
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+
+    function checkOverflow() {
+      setHasOverflow(el!.scrollWidth > el!.clientWidth + 1)
+    }
+
+    checkOverflow()
+
+    const observer = new ResizeObserver(checkOverflow)
+    observer.observe(el)
+
+    return () => observer.disconnect()
+  }, [])
+
   const slotsByDay = useMemo(() => {
     const map = new Map<string, Slot[]>()
     for (const day of TRIP_DAYS) map.set(day.iso, [])
@@ -187,49 +205,59 @@ export function TripPage() {
     : undefined
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-      <header className="mb-8 flex flex-col items-center gap-2 text-center">
-        <p className="font-sans text-sm uppercase tracking-widest text-muted-foreground">
-          18.–24. Oktober 2026
-        </p>
-        <h1 className="font-display text-3xl font-semibold text-foreground sm:text-4xl">
-          USA Family Trip
-        </h1>
-      </header>
+    <div className="w-full px-4 py-8 sm:px-6">
+      <div className="mx-auto max-w-6xl">
+        <header className="mb-8 flex flex-col items-center gap-2 text-center">
+          <p className="font-sans text-sm uppercase tracking-widest text-muted-foreground">
+            18.–24. Oktober 2026
+          </p>
+          <h1 className="font-display text-3xl font-semibold text-foreground sm:text-4xl">
+            USA Family Trip
+          </h1>
+        </header>
 
-      {!isSupabaseConfigured && (
-        <p className="mb-6 rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-center font-sans text-sm text-destructive">
-          Supabase-Zugangsdaten fehlen, siehe .env.example.
-        </p>
-      )}
-
-      <div className="mb-6 flex flex-col items-center gap-2">
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as SlotScope)}>
-          <TabsList>
-            <TabsTrigger value="global">Gemeinsamer Plan</TabsTrigger>
-            <TabsTrigger value="personal">Mein Plan</TabsTrigger>
-          </TabsList>
-        </Tabs>
-        {activeTab === 'personal' && (
-          <p className="text-xs text-muted-foreground">
-            Nur du siehst diese Einträge, bis du sie in den gemeinsamen Plan übernimmst.
+        {!isSupabaseConfigured && (
+          <p className="mb-6 rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-center font-sans text-sm text-destructive">
+            Supabase-Zugangsdaten fehlen, siehe .env.example.
           </p>
         )}
+
+        <div className="mb-6 flex flex-col items-center gap-2">
+          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as SlotScope)}>
+            <TabsList>
+              <TabsTrigger value="global">Gemeinsamer Plan</TabsTrigger>
+              <TabsTrigger value="personal">Mein Plan</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          {activeTab === 'personal' && (
+            <p className="text-xs text-muted-foreground">
+              Nur du siehst diese Einträge, bis du sie in den gemeinsamen Plan übernimmst.
+            </p>
+          )}
+        </div>
       </div>
 
-      <div className="flex gap-4 overflow-x-auto pb-4 sm:grid sm:grid-cols-2 sm:overflow-visible lg:grid-cols-4 xl:grid-cols-7">
-        {TRIP_DAYS.map((day) => (
-          <DayColumn
-            key={day.iso}
-            day={day}
-            slots={slotsByDay.get(day.iso) ?? []}
-            usernames={usernames}
-            memberId={member.id}
-            onAddSlot={() => setDialogState({ day })}
-            onEditSlot={(slot) => setDialogState({ day, slot })}
-            onPromoteSlot={activeTab === 'personal' ? handlePromoteClick : undefined}
-          />
-        ))}
+      <div className="relative w-full">
+        <div
+          ref={scrollRef}
+          className="grid w-full grid-cols-[repeat(7,minmax(220px,1fr))] gap-4 overflow-x-auto pb-4"
+        >
+          {TRIP_DAYS.map((day) => (
+            <DayColumn
+              key={day.iso}
+              day={day}
+              slots={slotsByDay.get(day.iso) ?? []}
+              usernames={usernames}
+              memberId={member.id}
+              onAddSlot={() => setDialogState({ day })}
+              onEditSlot={(slot) => setDialogState({ day, slot })}
+              onPromoteSlot={activeTab === 'personal' ? handlePromoteClick : undefined}
+            />
+          ))}
+        </div>
+        {hasOverflow && (
+          <div className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-background to-transparent" />
+        )}
       </div>
 
       {dialogState && (

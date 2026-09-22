@@ -24,7 +24,7 @@ export function DayColumn({
   onPromoteSlot,
 }: DayColumnProps) {
   return (
-    <div className="flex w-72 shrink-0 flex-col gap-3 sm:w-full">
+    <div className="flex min-w-0 flex-col gap-3">
       <div className="flex items-baseline justify-between">
         <h2 className="font-display text-lg font-semibold text-foreground">
           {day.label}
