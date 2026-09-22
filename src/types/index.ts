@@ -9,9 +9,10 @@ export interface Slot {
   day: string
   sort_order: number
   title: string
+  time_label: string | null
   description: string | null
   link: string | null
-  created_by: string
+  created_by: string | null
   created_at: string
   updated_at: string
 }
