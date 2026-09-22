@@ -159,7 +159,6 @@ export function AccountGate() {
 
             <Input
               type="password"
-              inputMode="numeric"
               autoComplete="off"
               placeholder="PIN"
               value={pin}
