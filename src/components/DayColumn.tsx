@@ -11,6 +11,7 @@ interface DayColumnProps {
   memberId: string
   onAddSlot: () => void
   onEditSlot: (slot: Slot) => void
+  onPromoteSlot?: (slot: Slot) => void
 }
 
 export function DayColumn({
@@ -20,6 +21,7 @@ export function DayColumn({
   memberId,
   onAddSlot,
   onEditSlot,
+  onPromoteSlot,
 }: DayColumnProps) {
   return (
     <div className="flex w-72 shrink-0 flex-col gap-3 sm:w-full">
@@ -51,8 +53,14 @@ export function DayColumn({
               key={slot.id}
               slot={slot}
               authorUsername={slot.created_by ? usernames[slot.created_by] : undefined}
+              usernames={usernames}
               canManage={slot.created_by === memberId}
               onEdit={() => onEditSlot(slot)}
+              onPromote={
+                onPromoteSlot && slot.scope === 'personal'
+                  ? () => onPromoteSlot(slot)
+                  : undefined
+              }
             />
           ))
         )}

@@ -13,6 +13,13 @@ function toTripDay(iso: string): TripDay {
   return { iso, label: `${weekday}, ${day}.${month}.` }
 }
 
+export function formatTime(startTime: string | null): string | null {
+  if (!startTime) return null
+  const [hours, minutes] = startTime.split(':')
+  if (!hours || !minutes) return null
+  return `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')} Uhr`
+}
+
 export const TRIP_DAYS: TripDay[] = [
   '2026-10-18',
   '2026-10-19',

@@ -226,3 +226,23 @@ create policy "slots_delete_anon"
 -- Realtime: slots-Tabelle muss der Publication beitreten, sonst feuern
 -- postgres_changes-Events (Insert/Update/Delete) nicht.
 alter publication supabase_realtime add table slots;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- Delta: "Mein Plan" vs. "Gemeinsamer Plan" (scope)
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- scope = 'personal' -> nur sichtbar/bearbeitbar im "Mein Plan"-Tab des
+-- erstellenden Members, bis er via "Übernehmen" auf 'global' gesetzt wird.
+alter table slots add column if not exists scope text not null default 'global';
+alter table slots add constraint slots_scope_check check (scope in ('personal', 'global'));
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- Delta: native Zeitauswahl (start_time) + betroffene Personen
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- Ersetzt time_label als primäres Zeitfeld für neue Slots. time_label bleibt
+-- als Spalte für Altbestand erhalten (wird als Fallback angezeigt).
+alter table slots add column if not exists start_time time;
+
+-- Leer/'{}' bedeutet "betrifft alle Mitglieder".
+alter table slots add column if not exists affected_members uuid[] not null default '{}';

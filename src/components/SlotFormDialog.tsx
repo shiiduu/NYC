@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
   DialogContent,
@@ -12,14 +13,20 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { supabase } from '@/lib/supabase'
 import type { TripDay } from '@/lib/trip'
-import type { Slot } from '@/types'
+import type { Slot, SlotScope } from '@/types'
 
 interface SlotFormDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   day: TripDay
   memberId: string
+  scope: SlotScope
   slot?: Slot
+}
+
+interface Username {
+  id: string
+  username: string
 }
 
 export function SlotFormDialog({
@@ -27,24 +34,53 @@ export function SlotFormDialog({
   onOpenChange,
   day,
   memberId,
+  scope,
   slot,
 }: SlotFormDialogProps) {
   const [title, setTitle] = useState('')
-  const [timeLabel, setTimeLabel] = useState('')
+  const [startTime, setStartTime] = useState('')
   const [description, setDescription] = useState('')
   const [link, setLink] = useState('')
+  const [affectedMembers, setAffectedMembers] = useState<string[]>([])
+  const [usernames, setUsernames] = useState<Username[]>([])
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     if (open) {
       setTitle(slot?.title ?? '')
-      setTimeLabel(slot?.time_label ?? '')
+      setStartTime(slot?.start_time ? slot.start_time.slice(0, 5) : '')
       setDescription(slot?.description ?? '')
       setLink(slot?.link ?? '')
+      setAffectedMembers(slot?.affected_members ?? [])
       setError(null)
     }
   }, [open, slot])
+
+  useEffect(() => {
+    if (!open || !supabase) return
+
+    let cancelled = false
+
+    async function loadUsernames() {
+      const { data } = await supabase!.rpc('list_usernames')
+      if (!cancelled && data) {
+        setUsernames(data as Username[])
+      }
+    }
+
+    loadUsernames()
+
+    return () => {
+      cancelled = true
+    }
+  }, [open])
+
+  function toggleMember(id: string) {
+    setAffectedMembers((current) =>
+      current.includes(id) ? current.filter((m) => m !== id) : [...current, id],
+    )
+  }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -63,9 +99,10 @@ export function SlotFormDialog({
 
     const payload = {
       title: title.trim(),
-      time_label: timeLabel.trim() || null,
+      start_time: startTime || null,
       description: description.trim() || null,
       link: link.trim() || null,
+      affected_members: affectedMembers,
     }
 
     const { error: dbError } = slot
@@ -74,6 +111,7 @@ export function SlotFormDialog({
           ...payload,
           day: day.iso,
           created_by: memberId,
+          scope,
         })
 
     setSubmitting(false)
@@ -85,6 +123,14 @@ export function SlotFormDialog({
 
     onOpenChange(false)
   }
+
+  const affectedLabel =
+    affectedMembers.length === 0
+      ? 'Betrifft alle'
+      : `Betrifft: ${usernames
+          .filter((u) => affectedMembers.includes(u.id))
+          .map((u) => u.username)
+          .join(', ')}`
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -106,12 +152,12 @@ export function SlotFormDialog({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="slot-time">Zeit/Zeitraum</Label>
+            <Label htmlFor="slot-time">Uhrzeit</Label>
             <Input
               id="slot-time"
-              placeholder="z.B. Vormittags oder 14:00"
-              value={timeLabel}
-              onChange={(event) => setTimeLabel(event.target.value)}
+              type="time"
+              value={startTime}
+              onChange={(event) => setStartTime(event.target.value)}
             />
           </div>
 
@@ -133,6 +179,25 @@ export function SlotFormDialog({
               value={link}
               onChange={(event) => setLink(event.target.value)}
             />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label>Betrifft</Label>
+            <div className="flex flex-col gap-2">
+              {usernames.map((user) => (
+                <div key={user.id} className="flex items-center gap-2">
+                  <Checkbox
+                    id={`slot-member-${user.id}`}
+                    checked={affectedMembers.includes(user.id)}
+                    onCheckedChange={() => toggleMember(user.id)}
+                  />
+                  <Label htmlFor={`slot-member-${user.id}`} className="font-normal">
+                    {user.username}
+                  </Label>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">{affectedLabel}</p>
           </div>
 
           {error && <p className="text-sm text-destructive">{error}</p>}
